@@ -85,9 +85,14 @@ int get_word (char* out_buf) {
 }
 
 int main (int argc, char** argv) {
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s \'starting word\'\n", argv[0]);	
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s \'starting word\' <num_words:-1> \n", argv[0]);	
 		exit(EXIT_FAILURE);
+	}
+	
+	int max_words = -1;
+	if (argc == 3) {
+		max_words = atoi(argv[2]);
 	}
 
 	srand(time(NULL));
@@ -134,14 +139,19 @@ int main (int argc, char** argv) {
 
 	/* Follow the markov chain! */
 	int idx = find_or_create(argv[1], nodes, &node_idx);
+	int word_count = 0;
 	while(1) {
 		WordNode* node = nodes[idx];
 		if (nodes[idx]->rank_idx >= 0) {
 			int rand_idx = node->rank_idx > 0 ? rand() % node->rank_idx + 1 : 0;
 			idx = node->ranks[rand_idx].word_idx;
 			fprintf(stderr, "%s ", nodes[idx]->original);
+			word_count++;
 		} else {
 			//idx = rand() % node_idx;
+			break;
+		}
+		if (word_count > max_words && max_words != -1) {
 			break;
 		}
 	}
@@ -150,5 +160,6 @@ int main (int argc, char** argv) {
 
 	/* Free allocations */
 	for (int i = 0; i <= node_idx; i++) free(nodes[i]);
+	free(nodes);
 	exit(EXIT_SUCCESS);
 }
