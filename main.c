@@ -77,9 +77,8 @@ int get_word (char* out_buf) {
 			*out_buf++ = '\0';
 			return 1;
 		} else {
-			if (isalnum(ch)) {
-				*out_buf++ = ch;
-			}
+			//TODO: Check if the letter is non-text
+			*out_buf++ = ch;
 		}
 	}
 	return 0;
@@ -93,8 +92,8 @@ int main (int argc, char** argv) {
 
 	srand(time(NULL));
 
-	WordNode* nodes[10000]; //TODO: MAKE IT EXPANDABLE (man gcc doesn't fit)
-	int node_size = 10000;
+	int node_size = 1000;
+	WordNode** nodes = calloc(node_size, sizeof(WordNode*)); //TODO: MAKE IT EXPANDABLE (man gcc doesn't fit)
 	int node_idx = 0;
 
 	char wordbuf[MAX_WORD_SIZE];
@@ -106,6 +105,14 @@ int main (int argc, char** argv) {
 
 	/* Add nodes to the graph */
 	while (get_word(wordbuf)) {
+		/* Expand the array if we run out of room */
+		if (node_idx == node_size - 1) {
+			node_size += 2000;
+			nodes = realloc(nodes, node_size * sizeof(WordNode*)); //TODO: Handle OOM
+			fprintf(stderr, "Realloc: %i\n", node_size);
+		}
+
+		/* Add another node to the graph */
 		if (strlen(wordbuf) > 0) {
 			int current_word = find_or_create(wordbuf, nodes, &node_idx);
 			if (last_word != current_word) create_or_accumulate_rank(nodes[last_word], current_word);
@@ -114,6 +121,7 @@ int main (int argc, char** argv) {
 	}
 
 	/* Print chains */
+	/*
 	for (int i = 0; i <= node_idx; i++) {
 		WordNode* node = nodes[i];
 		printf("(%s)\n", node->original);
@@ -122,14 +130,15 @@ int main (int argc, char** argv) {
 			printf("\t%s: %zu\n", nodes[rank.word_idx]->original, rank.rank);
 		}
 	}
+	*/
 
+	/* Follow the markov chain! */
 	int idx = find_or_create(argv[1], nodes, &node_idx);
 	while(1) {
 		WordNode* node = nodes[idx];
 		if (nodes[idx]->rank_idx >= 0) {
 			int rand_idx = node->rank_idx > 0 ? rand() % node->rank_idx + 1 : 0;
 			idx = node->ranks[rand_idx].word_idx;
-			//fprintf(stderr, "(%i) %s ", rand_idx, nodes[idx]->original);
 			fprintf(stderr, "%s ", nodes[idx]->original);
 		} else {
 			//idx = rand() % node_idx;
