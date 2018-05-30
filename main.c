@@ -25,8 +25,15 @@ typedef struct WordNode {
 	WordRank ranks[MAX_RANKS];
 } WordNode;
 
+WordNode* create_node(char* word) {
+	WordNode* ptr = calloc(1, sizeof(WordNode));
+	strcpy(ptr->original, word);
+	ptr->hash = str_hash(word);
+	return ptr;
+}
+
 int main () {
-	WordNode nodes[1000];
+	WordNode* nodes[1000];
 	size_t node_size = 1000;
 	size_t node_idx = 0;
 
@@ -37,9 +44,7 @@ int main () {
 	while ((ch = getchar()) != EOF) {
 		if (ch == ' ') {
 			*wordbuf_ptr++ = '\0';
-			strcpy(nodes[node_idx].original, wordbuf);
-			nodes[node_idx].hash = str_hash(wordbuf);
-			node_idx++;
+			nodes[node_idx++] = create_node(wordbuf);
 			wordbuf_ptr = wordbuf;
 		} else {
 			*wordbuf_ptr++ = ch;
@@ -47,7 +52,11 @@ int main () {
 	}
 
 	for (int i = 0; i < node_idx; i++) {
-		WordNode node = nodes[i];
-		printf("%s: %u\n", node.original, node.hash);
+		WordNode* node = nodes[i];
+		printf("%s: %u\n", node->original, node->hash);
+		for (int j = 0; j < node->rank_idx; j++) {
+			WordRank rank = node->ranks[j];
+			printf("\t%s: %zu", nodes[rank.word_idx]->original, rank.rank);
+		}
 	}
 }
