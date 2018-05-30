@@ -10,6 +10,7 @@
 //TODO: Turn these into command line args instead of preprocessor args
 #define IGNORE_CASE 0
 #define IGNORE_PUNCTUATION 0
+#define SHOW_TREE 0
 
 /*https://stackoverflow.com/questions/7666509/hash-function-for-string#7666577 */
 unsigned int str_hash(char* str) {
@@ -128,18 +129,19 @@ int get_word (char* out_buf) {
 		}
 
 		/* Print chains */
-		/*
-			for (int i = 0; i <= node_idx; i++) {
+#if SHOW_TREE
+		for (int i = 0; i <= node_idx; i++) {
 			WordNode* node = nodes[i];
 			printf("(%s)\n", node->original);
 			for (int j = 0; j <= node->subword_idx; j++) {
-			int subword = node->subwords[j];
-			printf("\t%s\n", nodes[subword]->original);
+				int subword = node->subwords[j];
+				printf("\t%s\n", nodes[subword]->original);
 			}
-			}
-			*/
+		}
+#endif
 
 		/* Follow the markov chain! */
+#if !SHOW_TREE
 		int idx = find_or_create(argv[1], nodes, &node_idx);
 		int word_count = 0;
 		while(1) {
@@ -147,7 +149,7 @@ int get_word (char* out_buf) {
 			if (nodes[idx]->subword_idx >= 0) {
 				int rand_idx = node->subword_idx > 0 ? rand() % node->subword_idx + 1 : 0;
 				idx = node->subwords[rand_idx];
-				fprintf(stderr, "%s ", nodes[idx]->original);
+				printf("%s ", nodes[idx]->original);
 				word_count++;
 			} else {
 				idx = rand() % node_idx;
@@ -156,6 +158,7 @@ int get_word (char* out_buf) {
 				break;
 			}
 		}
+#endif
 
 		putchar('\n');
 
