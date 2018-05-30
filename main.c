@@ -105,10 +105,12 @@ int main (int argc, char** argv) {
 	nodes[last_word] = create_node(wordbuf, str_hash(wordbuf));
 
 	/* Add nodes to the graph */
-	while (get_word(wordbuf) && strlen(wordbuf) > 0) {
-		int current_word = find_or_create(wordbuf, nodes, &node_idx);
-		if (last_word != current_word) create_or_accumulate_rank(nodes[last_word], current_word);
-		last_word = current_word;
+	while (get_word(wordbuf)) {
+		if (strlen(wordbuf) > 0) {
+			int current_word = find_or_create(wordbuf, nodes, &node_idx);
+			if (last_word != current_word) create_or_accumulate_rank(nodes[last_word], current_word);
+			last_word = current_word;
+		}
 	}
 
 	/* Print chains */
@@ -130,8 +132,8 @@ int main (int argc, char** argv) {
 			//fprintf(stderr, "(%i) %s ", rand_idx, nodes[idx]->original);
 			fprintf(stderr, "%s ", nodes[idx]->original);
 		} else {
-			idx = rand() % node_idx;
-			//break;
+			//idx = rand() % node_idx;
+			break;
 		}
 	}
 
