@@ -4,10 +4,7 @@
 #include <ctype.h>
 #include <time.h>
 
-//TODO: Create conditional realloc based on whether or not an index is at an end?
-//Maybe avoid this by realloc'ing BEFORE any function calls are made
-
-#define MAX_WORD_SIZE 100
+#define MAX_WORD_SIZE 500
 #define MAX_RANKS 50
 
 //https://stackoverflow.com/questions/7666509/hash-function-for-string#7666577
@@ -41,8 +38,8 @@ void create_or_accumulate_rank(WordNode* node, int idx) {
 		}
 	}
 
-	/* Not found, creat it */
-	if (node->rank_idx < MAX_RANKS) {
+	/* Not found, create it */
+	if (node->rank_idx < MAX_RANKS) { //TODO: Expandable?
 		node->rank_idx += 1;
 		node->ranks[node->rank_idx].word_idx = idx;
 		node->ranks[node->rank_idx].rank = 0;
@@ -72,7 +69,7 @@ unsigned int find_or_create(char* word, WordNode* nodes[], unsigned int* len) {
 
 int get_word (char* out_buf) {
 	int ch;	
-	while ((ch = getchar()) != EOF) {
+	while ((ch = fgetc(stdin)) != EOF) {
 		if (isspace(ch)) {
 			*out_buf++ = '\0';
 			return 1;
@@ -98,7 +95,7 @@ int main (int argc, char** argv) {
 	srand(time(NULL));
 
 	int node_size = 1000;
-	WordNode** nodes = calloc(node_size, sizeof(WordNode*)); //TODO: MAKE IT EXPANDABLE (man gcc doesn't fit)
+	WordNode** nodes = calloc(node_size, sizeof(WordNode*));
 	int node_idx = 0;
 
 	char wordbuf[MAX_WORD_SIZE];
