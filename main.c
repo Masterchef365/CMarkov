@@ -5,9 +5,9 @@
 #include <time.h>
 
 #define MAX_WORD_SIZE 500
-#define MAX_RANKS 50
+#define MAX_SUBWORDS 50
 
-//https://stackoverflow.com/questions/7666509/hash-function-for-string#7666577
+/*https://stackoverflow.com/questions/7666509/hash-function-for-string#7666577 */
 unsigned int str_hash(char* str) {
 	unsigned int hash = 7890;
 	int c;
@@ -15,46 +15,38 @@ unsigned int str_hash(char* str) {
 	return hash;
 }
 
-typedef struct WordRank {
-	int word_idx;
-	unsigned int rank;
-} WordRank;
-
 typedef struct WordNode {
-	char original[MAX_WORD_SIZE];	
-	unsigned int hash;
-	int rank_idx;
-	WordRank ranks[MAX_RANKS];
+	char original[MAX_WORD_SIZE];	/*The input word */
+	unsigned int hash; /*The hash of the word */
+	int subword_idx; /*How many subwords have we assigned? */
+	int subwords[MAX_SUBWORDS]; /*List of subwords */
 } WordNode;
 
-/* Search for a rank entry matching our input index and accumulate it. If it does not exist, create it */
-void create_or_accumulate_rank(WordNode* node, int idx) {
-	/* Search an accumulate */
-	for (int i = 0; i <= node->rank_idx; i++) {
-		WordRank* rank = &node->ranks[i];
-		if (rank->word_idx == idx) {
-			rank->rank++;	
-			return;
-		}
+/* Search for a subword entry matching our input index and accumulate it. If it does not exist, create it */
+void create_or_accumulate_subword(WordNode* node, int idx) {
+	/* Search and accumulate */
+	for (int i = 0; i <= node->subword_idx; i++) {
+		int* subword = &node->subwords[i];
+		if (*subword == idx) return;
 	}
 
 	/* Not found, create it */
-	if (node->rank_idx < MAX_RANKS) { //TODO: Expandable?
-		node->rank_idx += 1;
-		node->ranks[node->rank_idx].word_idx = idx;
-		node->ranks[node->rank_idx].rank = 0;
+	if (node->subword_idx < MAX_SUBWORDS) { /*TODO: Expandable? */
+		node->subwords[++node->subword_idx] = idx;
 	}
 }
 
+/* Allocate and construct a new node */
 WordNode* create_node(char* word, unsigned int hash) {
 	WordNode* ptr = calloc(1, sizeof(WordNode));
-	ptr->rank_idx = -1;
+	ptr->subword_idx = -1;
 	strcpy(ptr->original, word);
-	memset(ptr->ranks, 0, sizeof(WordRank) * MAX_RANKS);
+	memset(ptr->subwords, 0, sizeof(int) * MAX_SUBWORDS);
 	ptr->hash = hash;
 	return ptr;
 }
 
+/* Find or create a node in a wordtree */
 unsigned int find_or_create(char* word, WordNode* nodes[], unsigned int* len) {
 	unsigned int hash = str_hash(word);
 	for (int i = 0; i <= *len; i++) {
@@ -62,19 +54,20 @@ unsigned int find_or_create(char* word, WordNode* nodes[], unsigned int* len) {
 			return i;
 		}
 	}
-	*len += 1;
-	nodes[*len] = create_node(word, hash);
+	nodes[++*len] = create_node(word, hash);
 	return *len;
 }
 
+/*TODO: Handle over-length words */
 int get_word (char* out_buf) {
 	int ch;	
 	while ((ch = fgetc(stdin)) != EOF) {
 		if (isspace(ch)) {
+			/* Finish the word */
 			*out_buf++ = '\0';
 			return 1;
 		} else {
-			//TODO: Check if the letter is non-text
+			/*TODO: Check if the letter is non-text */
 			*out_buf++ = ch;
 		}
 	}
@@ -110,14 +103,14 @@ int main (int argc, char** argv) {
 		/* Expand the array if we run out of room */
 		if (node_idx == node_size - 1) {
 			node_size += 2000;
-			nodes = realloc(nodes, node_size * sizeof(WordNode*)); //TODO: Handle OOM
+			nodes = realloc(nodes, node_size * sizeof(WordNode*)); /*TODO: Handle OOM */
 			fprintf(stderr, "Realloc: %i\n", node_size);
 		}
 
 		/* Add another node to the graph */
 		if (strlen(wordbuf) > 0) {
 			int current_word = find_or_create(wordbuf, nodes, &node_idx);
-			if (last_word != current_word) create_or_accumulate_rank(nodes[last_word], current_word);
+			if (last_word != current_word) create_or_accumulate_subword(nodes[last_word], current_word);
 			last_word = current_word;
 		}
 	}
@@ -127,9 +120,9 @@ int main (int argc, char** argv) {
 	for (int i = 0; i <= node_idx; i++) {
 		WordNode* node = nodes[i];
 		printf("(%s)\n", node->original);
-		for (int j = 0; j <= node->rank_idx; j++) {
-			WordRank rank = node->ranks[j];
-			printf("\t%s: %zu\n", nodes[rank.word_idx]->original, rank.rank);
+		for (int j = 0; j <= node->subword_idx; j++) {
+			int subword = node->subwords[j];
+			printf("\t%s: %zu\n", nodes[subword]->original, subword);
 		}
 	}
 	*/
@@ -139,14 +132,14 @@ int main (int argc, char** argv) {
 	int word_count = 0;
 	while(1) {
 		WordNode* node = nodes[idx];
-		if (nodes[idx]->rank_idx >= 0) {
-			int rand_idx = node->rank_idx > 0 ? rand() % node->rank_idx + 1 : 0;
-			idx = node->ranks[rand_idx].word_idx;
+		if (nodes[idx]->subword_idx >= 0) {
+			int rand_idx = node->subword_idx > 0 ? rand() % node->subword_idx + 1 : 0;
+			idx = node->subwords[rand_idx];
 			fprintf(stderr, "%s ", nodes[idx]->original);
 			word_count++;
 		} else {
 			idx = rand() % node_idx;
-			//break;
+			/*break; */
 		}
 		if (word_count > max_words && max_words != -1) {
 			break;
