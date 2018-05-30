@@ -148,8 +148,8 @@ int main (int argc, char** argv) {
 			fprintf(stderr, "%s ", nodes[idx]->original);
 			word_count++;
 		} else {
-			//idx = rand() % node_idx;
-			break;
+			idx = rand() % node_idx;
+			//break;
 		}
 		if (word_count > max_words && max_words != -1) {
 			break;
