@@ -76,7 +76,7 @@ int get_word (char* out_buf) {
 
 int main (int argc, char** argv) {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s \'starting word\' <num_words:-1> \n", argv[0]);	
+		fprintf(stderr, "Usage: %s <starting word> <num_words:-1> \n", argv[0]);	
 		exit(EXIT_FAILURE);
 	}
 	
