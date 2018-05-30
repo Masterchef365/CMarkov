@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
+
+//TODO: Create conditional realloc based on whether or not an index is at an end?
+//Maybe avoid this by realloc'ing BEFORE any function calls are made
 
 #define MAX_WORD_SIZE 100
 #define MAX_RANKS 50
@@ -26,32 +30,24 @@ typedef struct WordNode {
 	WordRank ranks[MAX_RANKS];
 } WordNode;
 
-void create_or_append_rank(WordNode* node, int idx) {
-	//int least_idx = -1;
-	//int least = 999999;
+/* Search for a rank entry matching our input index and accumulate it. If it does not exist, create it */
+void create_or_accumulate_rank(WordNode* node, int idx) {
+	/* Search an accumulate */
 	for (int i = 0; i <= node->rank_idx; i++) {
 		WordRank* rank = &node->ranks[i];
 		if (rank->word_idx == idx) {
 			rank->rank++;	
 			return;
 		}
-		//if (rank->rank < least) {
-		//	least = rank->rank;
-		//	least_idx = i;
-		//}
 	}
-	//if (node->rank_idx + 1 >= MAX_RANKS) { //TODO: Test this
-	//	node->ranks[least_idx].word_idx = idx;
-	//	node->ranks[least_idx].rank = 0;
-	//} else {
+
+	/* Not found, creat it */
+	if (node->rank_idx < MAX_RANKS) {
 		node->rank_idx += 1;
 		node->ranks[node->rank_idx].word_idx = idx;
 		node->ranks[node->rank_idx].rank = 0;
-	//}
+	}
 }
-
-//TODO: Create conditional realloc based on whether or not an index is at an end?
-//Maybe avoid this by realloc'ing BEFORE any function calls are made
 
 WordNode* create_node(char* word, unsigned int hash) {
 	WordNode* ptr = calloc(1, sizeof(WordNode));
@@ -62,7 +58,7 @@ WordNode* create_node(char* word, unsigned int hash) {
 	return ptr;
 }
 
-unsigned int find_idx(char* word, WordNode* nodes[], unsigned int* len) {
+unsigned int find_or_create(char* word, WordNode* nodes[], unsigned int* len) {
 	unsigned int hash = str_hash(word);
 	for (int i = 0; i <= *len; i++) {
 		if (nodes[i]->hash == hash)	{
@@ -77,7 +73,7 @@ unsigned int find_idx(char* word, WordNode* nodes[], unsigned int* len) {
 int get_word (char* out_buf) {
 	int ch;	
 	while ((ch = getchar()) != EOF) {
-		if (isspace(ch)) { //TODO: use `is_space()`?
+		if (isspace(ch)) {
 			*out_buf++ = '\0';
 			return 1;
 		} else {
@@ -89,8 +85,15 @@ int get_word (char* out_buf) {
 	return 0;
 }
 
-int main () {
-	WordNode* nodes[10000];
+int main (int argc, char** argv) {
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s \'starting word\'\n", argv[0]);	
+		exit(EXIT_FAILURE);
+	}
+
+	srand(time(NULL));
+
+	WordNode* nodes[10000]; //TODO: MAKE IT EXPANDABLE (man gcc doesn't fit)
 	int node_size = 10000;
 	int node_idx = 0;
 
@@ -101,25 +104,40 @@ int main () {
 	int last_word = 0; 
 	nodes[last_word] = create_node(wordbuf, str_hash(wordbuf));
 
-	while (get_word(wordbuf)) {
-		int current_word = find_idx(wordbuf, nodes, &node_idx);
-		if (last_word != current_word) create_or_append_rank(nodes[last_word], current_word);
-		//printf("%s: %i\n", nodes[last_word]->original, last_word);
+	/* Add nodes to the graph */
+	while (get_word(wordbuf) && strlen(wordbuf) > 0) {
+		int current_word = find_or_create(wordbuf, nodes, &node_idx);
+		if (last_word != current_word) create_or_accumulate_rank(nodes[last_word], current_word);
 		last_word = current_word;
 	}
-	//printf("%s: %zu\n", nodes[last_word]->original, last_word);
 
-	/* Print */
+	/* Print chains */
 	for (int i = 0; i <= node_idx; i++) {
 		WordNode* node = nodes[i];
-		//printf("%s: %u, %i\n", node->original, node->hash, node->rank_idx);
-		printf("%s\n", node->original);
+		printf("(%s)\n", node->original);
 		for (int j = 0; j <= node->rank_idx; j++) {
 			WordRank rank = node->ranks[j];
 			printf("\t%s: %zu\n", nodes[rank.word_idx]->original, rank.rank);
 		}
 	}
 
+	int idx = find_or_create(argv[1], nodes, &node_idx);
+	while(1) {
+		WordNode* node = nodes[idx];
+		if (nodes[idx]->rank_idx >= 0) {
+			int rand_idx = node->rank_idx > 0 ? rand() % node->rank_idx + 1 : 0;
+			idx = node->ranks[rand_idx].word_idx;
+			//fprintf(stderr, "(%i) %s ", rand_idx, nodes[idx]->original);
+			fprintf(stderr, "%s ", nodes[idx]->original);
+		} else {
+			idx = rand() % node_idx;
+			//break;
+		}
+	}
+
+	putchar('\n');
+
 	/* Free allocations */
 	for (int i = 0; i <= node_idx; i++) free(nodes[i]);
+	exit(EXIT_SUCCESS);
 }
