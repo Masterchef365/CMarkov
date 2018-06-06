@@ -6,19 +6,17 @@
 
 #define MAX_WORD_SIZE 500
 #define MAX_SUBWORDS 50
-
-//TODO: Turn these into command line args instead of preprocessor args
-#define IGNORE_CASE 0
-#define IGNORE_PUNCTUATION 0
 #define SHOW_TREE 0
 
+/* A word on the markov tree */
 typedef struct Node {
-	char text[MAX_WORD_SIZE];	/* The input word */
+	char text[MAX_WORD_SIZE]; /* The original text of the word */
 	unsigned int hash; /* The hash of the word */
 	int subword_idx; /* How many subwords have we assigned? */
 	int subwords[MAX_SUBWORDS]; /* List of subwords */
 } Node;
 
+/* Convert a string into a unique hash */
 unsigned int str_hash(char* str) {
 	unsigned int hash = 7890;
 	int c;
@@ -36,78 +34,69 @@ Node* create_node(char* word, unsigned int hash) {
 	return ptr;
 }
 
+/* Append a subword to a node if it doesn't already exist */
 void find_or_create_subword(Node* node, int idx) {
-	for (int i = 0; i <= node->subword_idx; i++) {
-		int* subword = &node->subwords[i];
-		if (*subword == idx) return;
-	}
-	if (node->subword_idx < MAX_SUBWORDS) {
+	for (int i = 0; i <= node->subword_idx; i++)
+		if (node->subwords[i] == idx) return;
+	if (node->subword_idx < MAX_SUBWORDS)
 		node->subwords[++node->subword_idx] = idx;
-	}
 }
 
+/* Either find a node, or create it */
 unsigned int find_or_create_node(char* word, Node* nodes[], unsigned int* len) {
 	unsigned int hash = str_hash(word);
-	for (int i = 0; i <= *len; i++) {
-		if (nodes[i]->hash == hash)	{
-			return i;
-		}
-	}
+	for (int i = 0; i <= *len; i++)
+		if (nodes[i]->hash == hash) return i;
 	nodes[++*len] = create_node(word, hash);
 	return *len;
 }
 
-/*TODO: Handle over-length words */
-int get_word (char* out_buf) {
+/* Collect a single ' ' bound word from `src` */
+/* TODO: Handle over-sized words, use buffering for higher performance */
+int get_word (FILE* src, char* out_buf) {
 	int ch;	
-#if IGNORE_CASE
-	while ((ch = tolower(getchar())) != EOF)
-#else
-		while ((ch = getchar()) != EOF)
-#endif
-		{
-			if (isspace(ch)) {
-				/* Finish the word */
-				*out_buf++ = '\0';
-				return 1;
-			} else {
-				/*TODO: Check if the letter is non-text */
-#if IGNORE_PUNCTUATION
-				if (isalnum(ch)) *out_buf++ = ch;
-#else
-				*out_buf++ = ch;
-#endif
-			}
+	while ((ch = fgetc(src)) != EOF)
+	{
+		if (ch == ' ') {
+			*out_buf++ = '\0';
+			return 1;
+		} else {
+			*out_buf++ = ch;
 		}
+	}
 	return 0;
 }
 
 int main (int argc, char** argv) {
+	/* Warn user of incorrect usage */
 	if (argc < 2) {
 		fprintf(stderr, "Usage: %s <seed word> <num_words:-1> \n", argv[0]);	
 		exit(EXIT_FAILURE);
 	}
 
+	/* Max words to output (-1 is infinite) */
 	int max_words = -1;
 	if (argc == 3) {
 		max_words = atoi(argv[2]);
 	}
 
+	/* Initialize random seed for markov chain */
 	srand(time(NULL));
 
-	int node_size = 1000;
+	int node_size = 1000; /* How many nodes can the tree contain? */
+	int node_idx = 0; /* What node is the last on the chain? */
 	Node** nodes = calloc(node_size, sizeof(Node*));
-	int node_idx = 0;
 
+	/* Buffer for holding the current word */
 	char wordbuf[MAX_WORD_SIZE];
 
 	/* Prime the last(first) word */
-	get_word(wordbuf);
+	get_word(stdin, wordbuf);
 	int last_word = 0; 
 	nodes[last_word] = create_node(wordbuf, str_hash(wordbuf));
 
 	/* Add nodes to the graph */
-	while (get_word(wordbuf)) {
+	while (get_word(stdin, wordbuf)) {
 		/* Expand the array if we run out of room */
 		if (node_idx == node_size - 1) {
 			node_size += 2000;
